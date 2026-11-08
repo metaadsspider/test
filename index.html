@@ -1,140 +1,67 @@
- 
-<!DOCTYPE html>  
-<html>  
-<head>  
-  <meta charset="UTF-8">  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <title>FIFA WORLD CUP 2026</title>     
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js" crossorigin="anonymous"></script>  
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css" crossorigin="anonymous">  
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FMP9REY96D"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fox Cricket — Live Player</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css">
+<style>
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+#wrap{position:relative;width:100%;height:100%;background:#000}
+video{width:100%;height:100%;object-fit:contain;background:#000}
+.plyr{width:100%;height:100%;--plyr-color-main:#fff}
+.plyr__controls{justify-content:space-between!important}
+#status{position:absolute;top:10px;left:10px;color:#fff;background:#0009;padding:6px 9px;
+font:13px system-ui;border-radius:5px;z-index:5;display:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<video id="video" playsinline autoplay muted></video>
+<div id="status">Reconnecting to live stream…</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15"></script>
+<script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.js"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-FMP9REY96D');
-</script>
-  <style>  
-   * { margin: 0; padding: 0; box-sizing: border-box; }  
-    html, body {  
-      background: #000;  
-      height: 100vh;  
-      width: 100vw;  
-      overflow: hidden;  
-      font-family: system-ui, -apple-system, sans-serif;  
-    }  
-    .shaka-video-container {  
-      position: absolute;  
-      inset: 0;  
-      width: 100%;  
-      height: 100%;  
-    }  
-    video {  
-      width: 100%;  
-      height: 100%;  
-      background: #000;  
-      object-fit: contain;  
-    }  
-    .shaka-spinner-container,  
-    .shaka-spinner,  
-    .shaka-spinner-svg {  
-      display: none !important;  
-      visibility: hidden !important;  
-      opacity: 0 !important;  
-    }  
-  </style>  
-</head>  
-
- 
-  
-  <body>  
-  <div class="shaka-video-container" data-shaka-player>  
-    <video autoplay playsinline preload="metadata" poster="https://w0.peakpx.com/wallpaper/183/933/HD-wallpaper-fifa-world-cup-26-u-sports-soccer-mexico-canada-football-fifa-world-cup-world-cup-2026-we-are-26-sport-event-international-competition-global-event-tournament.jpg"></video>  
-  </div>  
-  
-  <script>  
-    document.addEventListener('DOMContentLoaded', async () => {  
-      shaka.polyfill.installAll();  
-  
-      if (!shaka.Player.isBrowserSupported()) {  
-        console.error('Browser not supported');  
-        return;  
-      }  
-  
-      const video = document.querySelector('video');  
-      const player = new shaka.Player();  
-      await player.attach(video);  
-  
-      const container = document.querySelector('.shaka-video-container');  
-      const ui = new shaka.ui.Overlay(player, container, video);  
-  
-      ui.configure({  
-        controlPanelElements: [  
-          'play_pause', 'time_and_duration', 'mute', 'volume',  
-          'spacer', 'language', 'captions', 'picture_in_picture',  
-          'quality', 'fullscreen'  
-        ],  
-        volumeBarColors: {  
-  base: 'rgba(0, 136, 255, 0.3)',  
-  level: 'rgb(0, 136, 255)'  
-},  
-seekBarColors: {
-  base: 'rgba(90, 0, 0, 0.3)',
-  buffered: 'rgba(120, 0, 0, 0.6)',
-  played: 'rgb(170, 0, 0)'
+const video=document.getElementById('video'), status=document.getElementById('status');
+const source='https://amssandbrix.sandbrix.live/sandbrix/streams/4bFVgGzOjBY8FZ10767771751169.m3u8';
+const player=new Plyr(video,{
+  autoplay:true, muted:true,
+  controls:['play','mute','volume','fullscreen'],
+  settings:[], clickToPlay:false, hideControls:true
+});
+let hls,lastTime=-1,stuckChecks=0,reconnecting=false;
+function connect(){
+ if(hls){try{hls.destroy()}catch(e){}}
+ reconnecting=false; status.style.display='none';
+ hls=new Hls({liveSyncDurationCount:3,liveMaxLatencyDurationCount:8,
+ maxLiveSyncPlaybackRate:1.5,lowLatencyMode:false,backBufferLength:30,
+ maxBufferLength:20,maxMaxBufferLength:30,manifestLoadingTimeOut:20000,
+ levelLoadingTimeOut:20000,fragLoadingTimeOut:30000,fragLoadingMaxRetry:6,
+ fragLoadingRetryDelay:1000,levelLoadingMaxRetry:6,levelLoadingRetryDelay:1000});
+ hls.loadSource(source);hls.attachMedia(video);
+ hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>{}));
+ hls.on(Hls.Events.ERROR,(_,data)=>{
+  if(!data.fatal)return;status.style.display='block';
+  if(data.type===Hls.ErrorTypes.NETWORK_ERROR)hls.startLoad();
+  else if(data.type===Hls.ErrorTypes.MEDIA_ERROR)hls.recoverMediaError();
+  else setTimeout(connect,2500);
+ });
 }
-      });  
-  
-   
-      let drmConfig = {  
-        clearKeys: {  
-          "69a5aa835a061ce64a630d1046727e40":
- "d02feac8a999bd06bf4059bf33411749"  
-        }  
-      };  
-  
-      let streamUrl = "https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/dash/enc/tll6uwepxa/out/v1/a7f67cbb33df46539312956427343886/cenc.mpd";  
-  
-      player.configure({  
-        drm: drmConfig,  
-        streaming: {  
-          lowLatencyMode: true,  
-          bufferingGoal: 15,  
-          rebufferingGoal: 2,  
-          bufferBehind: 15,  
-          retryParameters: {  
-            timeout: 10000,  
-            maxAttempts: 5,  
-            baseDelay: 300,  
-            backoffFactor: 1.2  
-          },  
-          segmentRequestTimeout: 8000,  
-          segmentPrefetchLimit: 2,  
-          useNativeHlsOnSafari: true  
-        },  
-        manifest: {  
-          retryParameters: {  
-            timeout: 8000,  
-            maxAttempts: 3  
-          }  
-        }  
-      });  
-  
-      player.addEventListener('error', (event) => {  
-        console.error('Shaka Player Error:', event.detail);  
-      });  
-  
-      try {  
-        await player.load(streamUrl);  
-        console.log("Stream loaded successfully");  
-      } catch (error) {  
-        console.error('Load error:', error);  
-      }  
-    });  
-  </script>  
-  </body>  
-  <script>(function(s){s.dataset.zone='10603308',s.src='https://bvtpk.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-  
+video.addEventListener('playing',()=>{status.style.display='none';stuckChecks=0});
+video.addEventListener('waiting',()=>{status.textContent='Buffering…';status.style.display='block'});
+video.addEventListener('stalled',()=>{status.textContent='Stream stalled — reconnecting…';status.style.display='block'});
+setInterval(()=>{
+ if(video.paused||video.readyState<2)return;
+ if(video.currentTime===lastTime)stuckChecks++;else stuckChecks=0;
+ lastTime=video.currentTime;
+ if(stuckChecks>=4&&!reconnecting){
+  reconnecting=true;status.textContent='Reconnecting…';status.style.display='block';
+  try{hls.startLoad(-1);hls.recoverMediaError()}catch(e){}
+  video.play().catch(()=>{});stuckChecks=0;setTimeout(()=>reconnecting=false,10000);
+ }
+},5000);
+connect();
+</script>
+</body>
 </html>
